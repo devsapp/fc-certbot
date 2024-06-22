@@ -1,0 +1,49 @@
+Edition: 3.0.0
+Type: Project
+Name: fc-certbot
+Version: 0.0.5
+Provider:
+  - 阿里云
+Description: 将 Certbot 部署到函数计算中，进行证书的签发和轮换。
+HomePage: https://github.com/devsapp/fc-certbot
+Tags:
+  - Certbot
+Category: 其它
+Service:
+  函数计算:
+    Authorities:
+      - AliyunFCFullAccess
+Organization: 阿里云函数计算（FC）
+Effective: Public
+Parameters:
+  type: object
+  additionalProperties: false
+  required:
+    - fcDomainManagerFunctionName
+    - certGeneratorFunctionName
+    - role
+  properties:
+    fcDomainManagerFunctionName:
+      title: Domain Manager 函数名
+      type: string
+      default: fc-domain-manager-${default-suffix}
+      description: Domain Manager 函数的名称
+    certGeneratorFunctionName:
+      title: Cert Generator 函数名
+      type: string
+      default: cert-generator-${default-suffix}
+      description: Cert Generator 函数的名称
+    role:
+      title: RAM 角色
+      type: string
+      default: ""
+      description: 我们会用此角色生成临时密钥来访问 CAS，DNS 和 FC。
+      x-role:
+        type: object
+        pattern: "^acs:ram::[0-9]*:role/.*$"
+        service: fc
+        description: 我们会用此角色生成临时密钥来访问 CAS，DNS 和 FC。
+        authorities:
+          - AliyunDNSFullAccess
+          - AliyunFCFullAccess
+          - AliyunYundunCertFullAccess

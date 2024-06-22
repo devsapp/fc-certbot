@@ -1,0 +1,107 @@
+edition: 3.0.0
+access: "{{ access }}"
+vars:
+  fcDomainManagerFunctionName: "{{ fcDomainManagerFunctionName }}"
+  certGeneratorFunctionName: "{{ certGeneratorFunctionName }}"
+  role: "{{ role }}"
+resources:
+  cert-generator-hz:
+    component: fc3
+    actions:
+      pre-deploy:
+        - run: mkdir python
+          path: ./cert-generator
+        - run: export PATH=/usr/local/envs/py310/bin:$PATH && pip3 install -r requirements.txt -t ./python
+          path: ./cert-generator
+    props:
+      region: cn-hangzhou
+      handler: index.handler
+      role: ${vars.role}
+      timeout: 900
+      cpu: 1
+      memorySize: 2048
+      diskSize: 10240
+      internetAccess: true
+      functionName: ${vars.certGeneratorFunctionName}
+      runtime: python3.10
+      environmentVariables:
+        PYTHONPATH: /opt/python:/code/python:/code
+      code: ./cert-generator
+      asyncInvokeConfig:
+        asyncTask: true
+        maxAsyncEventAgeInSeconds: 86400
+        maxAsyncRetryAttempts: 3
+  cert-generator-sg:
+    component: fc3
+    props:
+      region: ap-southeast-1
+      handler: index.handler
+      role: ${vars.role}
+      timeout: 900
+      cpu: 1
+      memorySize: 2048
+      diskSize: 10240
+      internetAccess: true
+      functionName: ${vars.certGeneratorFunctionName}
+      runtime: python3.10
+      environmentVariables:
+        PYTHONPATH: /opt/python:/code/python:/code
+      code: ./cert-generator
+      asyncInvokeConfig:
+        asyncTask: true
+        maxAsyncEventAgeInSeconds: 86400
+        maxAsyncRetryAttempts: 3
+  fc-domain-manager-hz:
+    component: fc3
+    actions:
+      pre-deploy:
+        - run: export PATH=/usr/local/versions/node/v20.8.1/bin:$PATH && npm install
+          path: ./fc-domain-manager
+    props:
+      region: cn-hangzhou
+      handler: index.handler
+      role: "{{ role }}"
+      timeout: 900
+      cpu: 2
+      memorySize: 4096
+      diskSize: 10240
+      internetAccess: true
+      functionName: ${vars.fcDomainManagerFunctionName}
+      runtime: nodejs20
+      environmentVariables:
+        CUSTOM_DOMAIN_REGIONS: cn-beijing,cn-hangzhou,cn-shanghai,cn-qingdao,cn-zhangjiakou,cn-huhehaote,cn-shenzhen,cn-chengdu
+        CERT_GENERATOR_FUNCTION_NAME: ${vars.certGeneratorFunctionName}
+      code: ./fc-domain-manager
+      triggers:
+        - triggerConfig:
+            payload: ""
+            cronExpression: CRON_TZ=Asia/Shanghai 0 0 0 * * *
+            enable: true
+          triggerName: time-trigger
+          qualifier: LATEST
+          triggerType: timer
+  fc-domain-manager-sg:
+    component: fc3
+    props:
+      region: ap-southeast-1
+      handler: index.handler
+      role: "{{ role }}"
+      timeout: 900
+      cpu: 2
+      memorySize: 4096
+      diskSize: 10240
+      internetAccess: true
+      functionName: ${vars.fcDomainManagerFunctionName}
+      runtime: nodejs20
+      environmentVariables:
+        CUSTOM_DOMAIN_REGIONS: cn-hongkong,ap-southeast-1,ap-southeast-3,ap-southeast-5,ap-southeast-7,ap-northeast-1,ap-northeast-2,eu-central-1,eu-west-1,us-west-1,us-east-1
+        CERT_GENERATOR_FUNCTION_NAME: ${vars.certGeneratorFunctionName}
+      code: ./fc-domain-manager
+      triggers:
+        - triggerConfig:
+            payload: ""
+            cronExpression: CRON_TZ=Asia/Shanghai 0 0 1 * * *
+            enable: true
+          triggerName: time-trigger
+          qualifier: LATEST
+          triggerType: timer

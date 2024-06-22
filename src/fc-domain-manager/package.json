@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@alicloud/darabonba-stream": "^0.0.2",
+    "@alicloud/fc20230330": "^4.1.0",
+    "@alicloud/cas20200407": "^1.2.0",
+    "lodash": "^4.17.21"
+  }
+}
