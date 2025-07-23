@@ -1,7 +1,7 @@
 Edition: 3.0.0
 Type: Project
 Name: fc-certbot
-Version: 0.0.5
+Version: 0.0.6
 Provider:
   - 阿里云
 Description: 将 Certbot 部署到函数计算中，进行证书的签发和轮换。

@@ -60,7 +60,7 @@ resources:
     props:
       region: cn-hangzhou
       handler: index.handler
-      role: "{{ role }}"
+      role: ${vars.role}
       timeout: 900
       cpu: 2
       memorySize: 4096
@@ -85,7 +85,7 @@ resources:
     props:
       region: ap-southeast-1
       handler: index.handler
-      role: "{{ role }}"
+      role: ${vars.role}
       timeout: 900
       cpu: 2
       memorySize: 4096
