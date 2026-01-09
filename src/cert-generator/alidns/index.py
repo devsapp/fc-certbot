@@ -9,10 +9,14 @@ from alibabacloud_tea_util import models as util_models
 
 
 def get_domain_rr():
-    tokens = os.environ["DEVS_DOMAIN"].split(".")
+    domain = os.environ.get("DEVS_DOMAIN", "")
+    tokens = domain.split(".")
     del tokens[-2:]
-    if tokens[0] == "*":
-        tokens.pop(0)
+    
+    if tokens:
+        if tokens[0] == "*":
+            tokens.pop(0)
+
     tokens.insert(0, "_acme-challenge")
     return ".".join(tokens)
 
