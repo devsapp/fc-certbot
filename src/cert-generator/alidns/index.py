@@ -9,16 +9,25 @@ from alibabacloud_tea_util import models as util_models
 
 
 def get_domain_rr():
-    tokens = os.environ["DEVS_DOMAIN"].split(".")
+    # Certbot 会为每个域名设置 CERTBOT_DOMAIN 环境变量
+    # 如果不存在（例如测试环境），则回退到 DEVS_DOMAIN
+    domain = os.environ.get("CERTBOT_DOMAIN") or os.environ.get("DEVS_DOMAIN", "")
+    tokens = domain.split(".")
     del tokens[-2:]
-    if tokens[0] == "*":
-        tokens.pop(0)
+    
+    # 检查列表是否为空，避免根域名导致的 IndexError
+    if tokens:
+        if tokens[0] == "*":
+            tokens.pop(0)
+    
     tokens.insert(0, "_acme-challenge")
     return ".".join(tokens)
 
 
 def get_domain_name():
-    tokens = os.environ["DEVS_DOMAIN"].split(".")
+    # Certbot 会为每个域名设置 CERTBOT_DOMAIN 环境变量
+    domain = os.environ.get("CERTBOT_DOMAIN") or os.environ.get("DEVS_DOMAIN", "")
+    tokens = domain.split(".")
     return ".".join(tokens[-2:])
 
 
@@ -30,16 +39,22 @@ def check_if_valid_domain():
 
 
 def insert_rr(domainName, rr):
-    print(os.environ["CERTBOT_VALIDATION"])
-    client.add_domain_record_with_options(
-        alidns_20150109_models.AddDomainRecordRequest(
-            domain_name=domainName,
-            rr=rr,
-            type="TXT",
-            value=os.environ["CERTBOT_VALIDATION"],
-        ),
-        runtime,
-    )
+    validation = os.environ.get("CERTBOT_VALIDATION", "")
+    print(f"[DNS API] Adding TXT record: {rr}.{domainName} = {validation[:20]}...")
+    try:
+        result = client.add_domain_record_with_options(
+            alidns_20150109_models.AddDomainRecordRequest(
+                domain_name=domainName,
+                rr=rr,
+                type="TXT",
+                value=validation,
+            ),
+            runtime,
+        )
+        print(f"[DNS API] Record added successfully, RecordId: {result.body.record_id}")
+    except Exception as e:
+        print(f"[DNS API] Failed to add record: {str(e)}")
+        raise
 
 
 def delete_rr(record_id):
@@ -49,15 +64,22 @@ def delete_rr(record_id):
 
 
 def update_rr(record_id, rr):
-    client.update_domain_record_with_options(
-        alidns_20150109_models.UpdateDomainRecordRequest(
-            record_id=record_id,
-            rr=rr,
-            type="TXT",
-            value=os.environ["CERTBOT_VALIDATION"],
-        ),
-        runtime,
-    )
+    validation = os.environ.get("CERTBOT_VALIDATION", "")
+    print(f"[DNS API] Updating TXT record {record_id}: {rr} = {validation[:20]}...")
+    try:
+        client.update_domain_record_with_options(
+            alidns_20150109_models.UpdateDomainRecordRequest(
+                record_id=record_id,
+                rr=rr,
+                type="TXT",
+                value=validation,
+            ),
+            runtime,
+        )
+        print(f"[DNS API] Record updated successfully")
+    except Exception as e:
+        print(f"[DNS API] Failed to update record: {str(e)}")
+        raise
 
 
 def get_domain_record_id(domainName, rr):
@@ -73,6 +95,23 @@ def get_domain_record_id(domainName, rr):
             record_id = record.record_id
             break
     return record_id
+
+
+def get_domain_record_id_by_value(domainName, rr, value):
+    """根据 RR 名和记录值精确匹配，返回 record_id。
+    用于 cleanup 时只删除当前 challenge 对应的那条 TXT 记录，
+    避免误删同名但不同值的其他 ACME challenge 记录。
+    """
+    records = client.describe_domain_records_with_options(
+        alidns_20150109_models.DescribeDomainRecordsRequest(
+            domain_name=domainName, type_key_word="TXT", rrkey_word=rr
+        ),
+        runtime,
+    )
+    for record in records.body.domain_records.record:
+        if record.rr == rr and record.value == value:
+            return record.record_id
+    return None
 
 
 def get_alidns_endpoint():
